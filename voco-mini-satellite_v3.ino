@@ -110,8 +110,8 @@
 
 #define DEVICE_TYPE 0 // Select from the list above.
 
-#define WIFI_SSID "sterrenkijker_nomap"
-#define WIFI_PASS "jazzysonganddancewoman"
+#define WIFI_SSID ""
+#define WIFI_PASS ""
 
 #define OTA_PASS_HASH "start"
 #define SITEID "atomecho"
