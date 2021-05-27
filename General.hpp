@@ -18,8 +18,8 @@
 #define MQTT_PASS ""
 #define MQTT_MAX_PACKET_SIZE 2000
 
-#define WIFI_SSID "sterrenkijker_nomap"
-#define WIFI_PASS "jazzysonganddancewoman"
+#define WIFI_SSID ""
+#define WIFI_PASS ""
 
 #define OTA_PASS_HASH "start"
 
