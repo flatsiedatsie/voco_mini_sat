@@ -98,7 +98,7 @@
 * ************************************************************************ */
 
 #include <Arduino.h>
-#include <ArduinoOTA.h>
+//#include <ArduinoOTA.h>
 #include <WiFi.h>
 #include "device.h"
 
@@ -109,23 +109,6 @@
 #define TTGOCAMWHITE 3
 
 #define DEVICE_TYPE 0 // Select from the list above.
-
-#define WIFI_SSID ""
-#define WIFI_PASS ""
-
-#define OTA_PASS_HASH "start"
-#define SITEID "atomecho"
-#define HOSTNAME "atomecho"
-#define MQTT_IP "192.168.1.166"
-#define MQTT_PORT 1883
-#define MQTT_USER ""
-#define MQTT_PASS ""
-#define MQTT_MAX_PACKET_SIZE 2000
-//#define CONFIG_ASYNC_TCP_RUNNING_CORE 1
-
-
-
-
 
 boolean I2StaskCreated = false;
 
@@ -159,6 +142,22 @@ boolean I2StaskCreated = false;
 #include "General.hpp"
 #include "StateMachine.hpp"
 
+#define WIFI_SSID ""
+#define WIFI_PASS ""
+
+#define OTA_PASS_HASH "start"
+#define SITEID "ATOMECHO"
+#define HOSTNAME "atomecho"
+#define MQTT_IP "192.168.2.165"
+#define MQTT_PORT 1883
+#define MQTT_USER ""
+#define MQTT_PASS ""
+#define MQTT_MAX_PACKET_SIZE 20000
+//#define CONFIG_ASYNC_TCP_RUNNING_CORE 1
+
+
+
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Booting");
@@ -184,6 +183,7 @@ void setup() {
   // ---------------------------------------------------------------------------
   // ArduinoOTA
   // ---------------------------------------------------------------------------
+  /*
   ArduinoOTA.setPasswordHash(OTA_PASS_HASH);
 
   ArduinoOTA
@@ -209,12 +209,14 @@ void setup() {
       else if (error == OTA_END_ERROR)
         Serial.println("End Failed");
     });
- 
+  */
   fsm::start();
 
-  server.on("/", handleRequest);
-  server.begin();
-  Serial.print(F("end of setup"));
+  //server.on("/", handleRequest);
+  //server.begin();
+  Serial.println(audioFrameTopic.c_str());
+  Serial.println(F("end of setup"));
+
 }
 
 void loop() {

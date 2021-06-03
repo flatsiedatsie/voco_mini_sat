@@ -5,18 +5,20 @@
 #include <PubSubClient.h>
 #include "RingBuf.h"
 #include "SPIFFS.h"
-#include "ESPAsyncWebServer.h"
+//#include "ESPAsyncWebServer.h"
 #include <ArduinoJson.h>
 #include "index_html.h"
 
-#define SITEID "atomecho"
+#define SITEID "ATOMECHO"
 #define HOSTNAME "atomecho"
-#define MQTT_HOST "192.168.2.166"
-#define MQTT_IP "192.168.1.166"
+#define MQTT_HOST ""
+#define MQTT_IP "192.168.2.165"
 #define MQTT_PORT 1883
 #define MQTT_USER ""
 #define MQTT_PASS ""
-#define MQTT_MAX_PACKET_SIZE 2000
+#define MQTT_MAX_PACKET_SIZE 20000
+#define HOST_DNS1 "192.168.2.2"
+
 
 #define WIFI_SSID ""
 #define WIFI_PASS ""
@@ -33,7 +35,7 @@ enum {
   HW_REMOTE = 1
 };
 
-AsyncWebServer server(80);
+//AsyncWebServer server(80);
 //Configuration defaults
 struct Config {
   std::string siteid = SITEID;
@@ -122,7 +124,7 @@ struct HotwordDetectedEvent : tinyfsm::Event { };
 void onMqttConnect(bool sessionPresent);
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason);
 void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
-void publishDebug(const char* message);
+//void publishDebug(const char* message);
 void InitI2SSpeakerOrMic(int mode);
 void WiFiEvent(WiFiEvent_t event);
 void initHeader(int readSize, int width, int rate);
@@ -222,6 +224,7 @@ String processor(const String& var){
   return String();
 }
 
+/*
 void handleFSf ( AsyncWebServerRequest* request, const String& route ) {
     AsyncWebServerResponse *response ;
 
@@ -364,6 +367,7 @@ void publishDebug(const char* message) {
         asyncClient.publish(debugTopic.c_str(), 0, false, message);
     }
 }
+*/
 
 void loadConfiguration(const char *filename, Config &config) {
   File file = SPIFFS.open(filename);
@@ -375,7 +379,7 @@ void loadConfiguration(const char *filename, Config &config) {
     config.mqtt_host = MQTT_HOST;
   } else {
     serializeJsonPretty(doc, Serial);
-    Serial.println();  
+    Serial.println();
     config.siteid = doc.getMember("siteid").as<std::string>();
     config.mqtt_host = doc.getMember("mqtt_host").as<std::string>();
     config.mqtt_port = doc.getMember("mqtt_port").as<int>();

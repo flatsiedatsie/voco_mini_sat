@@ -1,9 +1,9 @@
 {
-"mqtt_host": "192.168.2.166",
+"siteid": "ATOMECHO",
+"mqtt_host": "192.168.2.165",
 "mqtt_port": 1883,
 "mqtt_user": "",
 "mqtt_pass": "",
-"sideid": "atomecho",
 "mqtt_valid": true,
 "mute_input": false,
 "mute_output": false,
