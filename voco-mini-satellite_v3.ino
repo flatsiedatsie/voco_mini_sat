@@ -5,7 +5,7 @@
    Voice. This is typically used for Rhasspy.
    See https://rhasspy.readthedocs.io/en/latest/ for more information
 
-   Original Author:  Paul Romkes
+   Original Author:  Paul Romkesg
    Date:    Januari 2021
    Version: 7.0
 
@@ -152,7 +152,7 @@ boolean I2StaskCreated = false;
 #define MQTT_PORT 1883
 #define MQTT_USER ""
 #define MQTT_PASS ""
-#define MQTT_MAX_PACKET_SIZE 20000
+#define MQTT_MAX_PACKET_SIZE 2000
 //#define CONFIG_ASYNC_TCP_RUNNING_CORE 1
 
 

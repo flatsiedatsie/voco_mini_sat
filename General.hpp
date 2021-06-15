@@ -16,9 +16,12 @@
 #define MQTT_PORT 1883
 #define MQTT_USER ""
 #define MQTT_PASS ""
-#define MQTT_MAX_PACKET_SIZE 20000
+#define MQTT_MAX_PACKET_SIZE 2000
 #define HOST_DNS1 "192.168.2.2"
 
+
+//#define WIFI_SSID ""
+//#define WIFI_PASS ""
 
 #define WIFI_SSID ""
 #define WIFI_PASS ""
@@ -105,6 +108,8 @@ int bitDepth = 16;
 static EventGroupHandle_t audioGroup;
 SemaphoreHandle_t wbSemaphore;
 TaskHandle_t i2sHandle;
+
+char current_session[37] = "bf788e48-fe11-4206-9469-5ac4ec3fd8bd";
 
 struct WifiDisconnected;
 struct MQTTDisconnected;

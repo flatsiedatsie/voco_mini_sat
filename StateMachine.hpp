@@ -31,24 +31,39 @@ class HotwordDetected : public StateMachine
     xEventGroupClearBits(audioGroup, STREAM);
     //device->updateBrightness(config.hotword_brightness);
     if (xSemaphoreTake(wbSemaphore, (TickType_t)10000) == pdTRUE) {
+      Serial.println("-Semaphone something");
       //device->updateColors(COLORS_HOTWORD);
       xSemaphoreGive(wbSemaphore);
     }
     initHeader(device->readSize, device->width, device->rate);
     xEventGroupSetBits(audioGroup, STREAM);
+    Serial.println(F("-Re-stream"));
+
+    Serial.println(current_session);
+    asyncClient.publish("hermes/asr/stopListening", 0, false, "{\"siteId\":\"ATOMECHO\",\"sessionId\":\"bf788e48-fe11-4206-9469-5ac4ec3fd8bd\"}");
+
+    
+    
+    //hermes/asr/stopListening {"siteId":"ATOMECHO","sessionId":"bf788e48-fe11-4206-9469-5ac4ec3fd8bd"}
+    //hermes/asr/startListening {"siteId":"ATOMECHO","sessionId":"bf788e48-fe11-4206-9469-5ac4ec3fd8bd","startSignalMs":-20}
+
+    
   }
 
   void react(StreamAudioEvent const &) override { 
+    Serial.println("hw-detected-react-stream");
     xEventGroupClearBits(audioGroup, PLAY);
     xEventGroupSetBits(audioGroup, STREAM);
   };
 
   void react(PlayAudioEvent const &) override { 
+    Serial.println("hw-detected-react-play");
     xEventGroupClearBits(audioGroup, STREAM);
     xEventGroupSetBits(audioGroup, PLAY);
   };
 
   void react(IdleEvent const &) override { 
+    Serial.println("hw-detected-go-back-to-idle");
     transit<Idle>();
   }
 
@@ -75,6 +90,7 @@ class Idle : public StateMachine
     initHeader(device->readSize, device->width, device->rate);
     xEventGroupSetBits(audioGroup, STREAM);
     Serial.println("end of idle. Stream was set to true.");
+    asyncClient.publish("hermes/voco/azrxidia/play", 0, false, "{\"sound_file\":\"start_of_input\"}");
     Serial.printf("Total heap: %d\r\n", ESP.getHeapSize());
     Serial.printf("Free heap: %d\r\n", ESP.getFreeHeap());
   }
@@ -82,6 +98,7 @@ class Idle : public StateMachine
   void run(void) override {
     if (device->isHotwordDetected() && !hotwordDetected) {
       hotwordDetected = true;
+      Serial.println(F("Hotward detected! Sending start-session mqtt command"));
       //start session by publishing a message to hermes/dialogueManager/startSession
       std::string message = "{\"init\":{\"type\":\"action\",\"canBeEnqueued\": false},\"siteId\":\"" + std::string(config.siteid) + "\"}";
       asyncClient.publish("hermes/dialogueManager/startSession", 0, false, message.c_str());
@@ -93,14 +110,17 @@ class Idle : public StateMachine
   }
 
   void react(MQTTDisconnectedEvent const &) override { 
+    Serial.println(F("idle-> mqtt disconnect event detected"));
     transit<MQTTDisconnected>();
   }
 
   void react(HotwordDetectedEvent const &) override { 
+    Serial.println(F("idle-> hotword event detected"));
     transit<HotwordDetected>();
   }
 
   void react(StreamAudioEvent const &) override { 
+    Serial.println(F("idle-> stream audio event detected"));
     xEventGroupClearBits(audioGroup, PLAY);
     xEventGroupSetBits(audioGroup, STREAM);
   };
@@ -159,6 +179,7 @@ class MQTTDisconnected : public StateMachine {
       asyncClient.disconnect();
     }
     if (!mqttInitialized) {
+      Serial.println("adding onMessage. This should only happen once.");
       asyncClient.onMessage(onMqttMessage);
       mqttInitialized = true;
     }
@@ -169,12 +190,17 @@ class MQTTDisconnected : public StateMachine {
     
     char clientID[100];
     snprintf(clientID, 100, "%sAudio", config.siteid.c_str());
-    asyncClient.connect();
-    Serial.println(F("asyncclient connect was called"));
+    
+    if (!asyncClient.connected()) {
+      asyncClient.connect();
+      Serial.println(F("asyncclient connect was called"));
+    }
 
     if (!audioServer.connected()) {
       Serial.println(F("also reconnecting to audio"));
+      audioServer.setBufferSize(MQTT_MAX_PACKET_SIZE);
       audioServer.setServer(config.mqtt_host.c_str(), config.mqtt_port);
+      
       audioServer.connect(clientID, config.mqtt_user.c_str(), config.mqtt_pass.c_str());
     }
   }
@@ -376,18 +402,22 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
         if (root["siteId"] == config.siteid.c_str()) {
           Serial.println(F("toggleOff message was for us"));
             if (root.containsKey("sessionId")) {
-                Serial.println("SessionId in toggleOff");
+                Serial.print("SessionId in toggleOff:");
                 JsonVariant sessionId = root.getMember("sessionId");
                 sessionid = sessionId.as<std::string>();
+                //current_session = sessionid.c_str();
+                memcpy(current_session, sessionid.c_str(), sizeof(sessionid.c_str()));
+                Serial.println(sessionid.c_str());
             }
             else{
               Serial.println(F("SessionId NOT in toggleOff"));
             }
             Serial.println(F("Hotword detected event"));
-            send_event(HotwordDetectedEvent());
+            //send_event(HotwordDetectedEvent());
         }
       }
     } else if (topicstr.find("toggleOn") != std::string::npos) {
+      Serial.println("received toggleOn");
       std::string payloadstr(payload);
       StaticJsonDocument<300> doc;
       DeserializationError err = deserializeJson(doc, payloadstr.c_str());
@@ -664,7 +694,7 @@ void I2Stask(void *p) {
               memcpy(payload, &header, sizeof(header));
               memcpy(&payload[sizeof(header)], &data[messageBytes * i], messageBytes);
               //Serial.write(header);
-              Serial.print(">");
+              //Serial.print(">");
               audioServer.publish(audioFrameTopic.c_str(),(uint8_t *)payload, sizeof(payload));
             }
           }
@@ -682,9 +712,9 @@ void I2Stask(void *p) {
     //Added for stability when neither PLAY or STREAM is set.
     //else{
     if(xEventGroupGetBits(audioGroup) != STREAM && xEventGroupGetBits(audioGroup) != PLAY){
-      vTaskDelay(10);
+      vTaskDelay(20);
     }
-    vTaskDelay(20);
+    //vTaskDelay(20);
 
   }  
   vTaskDelete(NULL);
