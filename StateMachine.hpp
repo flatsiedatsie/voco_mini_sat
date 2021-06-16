@@ -26,7 +26,7 @@ public:
 class HotwordDetected : public StateMachine
 {
   void entry(void) override {
-    Serial.println("Enter HotwordDetected");
+    Serial.println("HotwordDetected init");
     xEventGroupClearBits(audioGroup, PLAY);
     xEventGroupClearBits(audioGroup, STREAM);
     //device->updateBrightness(config.hotword_brightness);
@@ -40,7 +40,7 @@ class HotwordDetected : public StateMachine
     Serial.println(F("-Re-stream"));
 
     Serial.println(current_session);
-    asyncClient.publish("hermes/asr/stopListening", 0, false, "{\"siteId\":\"ATOMECHO\",\"sessionId\":\"bf788e48-fe11-4206-9469-5ac4ec3fd8bd\"}");
+    //asyncClient.publish("hermes/asr/stopListening", 0, false, "{\"siteId\":\"ATOMECHO\",\"sessionId\":\"bf788e48-fe11-4206-9469-5ac4ec3fd8bd\"}");
 
     
     
@@ -146,7 +146,7 @@ class MQTTConnected : public StateMachine {
     asyncClient.subscribe(restartTopic.c_str(), 0);
     
     // VOCO
-    asyncClient.subscribe("hermes/voco/ATOMECHO/play", 0);
+    asyncClient.subscribe("hermes/voco/ATOMECHO/#", 0);
     
     Serial.println("going from mqtt connected to idle");
     transit<Idle>();
@@ -161,6 +161,8 @@ class MQTTConnected : public StateMachine {
   }
 };
 
+
+
 class MQTTDisconnected : public StateMachine {
 
   private:
@@ -168,6 +170,7 @@ class MQTTDisconnected : public StateMachine {
 
   void entry(void) override {
     Serial.println("Enter MQTTDisconnected");
+    Serial.printf("Audio connected: %d, Async connected: %d\r\n", audioServer.connected(), asyncClient.connected());
     startMillis = millis();
     currentMillis = millis();
     if (audioServer.connected()) {
@@ -177,30 +180,35 @@ class MQTTDisconnected : public StateMachine {
     if (asyncClient.connected()) {
       Serial.println(F("Disconnecting async client that was connected :-("));
       asyncClient.disconnect();
+      Serial.printf("Connecting MQTT: %s, %d\r\n", config.mqtt_host.c_str(), config.mqtt_port);
+
     }
     if (!mqttInitialized) {
       Serial.println("adding onMessage. This should only happen once.");
       asyncClient.onMessage(onMqttMessage);
       mqttInitialized = true;
     }
-    Serial.printf("Connecting MQTT: %s, %d\r\n", config.mqtt_host.c_str(), config.mqtt_port);
-    asyncClient.setClientId(config.siteid.c_str());
-    asyncClient.setServer(config.mqtt_host.c_str(), config.mqtt_port);
-    asyncClient.setCredentials(config.mqtt_user.c_str(), config.mqtt_pass.c_str());
+
     
-    char clientID[100];
-    snprintf(clientID, 100, "%sAudio", config.siteid.c_str());
+
     
     if (!asyncClient.connected()) {
+      asyncClient.setClientId(config.siteid.c_str());
+      asyncClient.setServer(config.mqtt_host.c_str(), config.mqtt_port);
+      asyncClient.setCredentials(config.mqtt_user.c_str(), config.mqtt_pass.c_str());
+      
       asyncClient.connect();
       Serial.println(F("asyncclient connect was called"));
     }
 
     if (!audioServer.connected()) {
       Serial.println(F("also reconnecting to audio"));
+      
       audioServer.setBufferSize(MQTT_MAX_PACKET_SIZE);
       audioServer.setServer(config.mqtt_host.c_str(), config.mqtt_port);
       
+      char clientID[100];
+      snprintf(clientID, 100, "%sAudio", config.siteid.c_str());
       audioServer.connect(clientID, config.mqtt_user.c_str(), config.mqtt_pass.c_str());
     }
   }
@@ -210,10 +218,11 @@ class MQTTDisconnected : public StateMachine {
       Serial.println("BOTH CONNECTED");
       transit<MQTTConnected>();
     } else {
-      currentMillis = millis();
+      //currentMillis = millis();
       if (currentMillis - startMillis > 10000) {
-        Serial.print("One of them failed: ");
-        Serial.printf("Audio connected: %d, Async connected: %d\r\n", audioServer.connected(), asyncClient.connected());
+        Serial.print("MQTTDisconnected -> run: Ten seconds passed. One of them failed: ");
+        Serial.printf("MQTTDisconnected -> run: Audio connected: %d, Async connected: %d\r\n", audioServer.connected(), asyncClient.connected());
+        Serial.println(F("MQTTDisconnected -> run: transitioning to mqttDisconnected state (again?)"));
         transit<MQTTDisconnected>();
       }
     }
@@ -227,6 +236,8 @@ class MQTTDisconnected : public StateMachine {
     transit<WifiDisconnected>();
   }
 };
+
+
 
 class WifiConnected : public StateMachine
 {
@@ -389,6 +400,8 @@ std::vector<std::string> explode( const std::string &delimiter, const std::strin
 
 void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
   Serial.print("Incoming MQTT message. Topic: "); Serial.println(topic);
+  Serial.println(payload);
+  audioServer.loop();
   std::string topicstr(topic);
   std::string sessionid;
   if (len + index == total) {
@@ -413,7 +426,7 @@ void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties 
               Serial.println(F("SessionId NOT in toggleOff"));
             }
             Serial.println(F("Hotword detected event"));
-            //send_event(HotwordDetectedEvent());
+            send_event(HotwordDetectedEvent());
         }
       }
     } else if (topicstr.find("toggleOn") != std::string::npos) {
